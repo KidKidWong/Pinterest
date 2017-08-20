@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>瀑布流加载图片</title>
+    <style>
+        *{
+            padding: 0;
+            margin: 0;
+        }
+        #container{
+            border: 1px solid red;
+            margin:50px auto 0;
+            position: relative;//以便里面的图片相对于container进行定位
+        }
+        #container img{
+            position: absolute;//图片绝对定位
+        }
+        #loader{
+            position: fixed;
+            bottom: 50%;
+            left: 50%;
+            /*display: none;*/
+        }
+    </style>
+    <script src="jquery-3.2.1.js"></script>
+    <script>
+        $(function () {
+            var loader=$("#loader");//获取加载gif
+            var container=$("#container");//获取容器
+            var url="http://www.wookmark.com/api/json/popular?callback=?";//请求数据的地址
+            var iPage=0;//获取数据的页数。初始值为0
+            //计算列数
+            var iWidth=200;//每一列宽度。就是每张图片的宽度都是200
+            var iSpace=10;//列与列之间的间隔
+            var iActualWidth=iWidth+iSpace;//每一列实际占的宽度
+            var iColumns=0;//变量存储列数
+            //窗口可视区宽度：$(window).innerWidth()
+
+
+            //计算列数和container容器宽度的函数
+            function setColumns() {
+                iColumns=Math.floor($(window).innerWidth()/iActualWidth);//计算列数、列数是整数，须取整
+                container.css({"width":iColumns*iActualWidth-iSpace});//计算出容器的宽度
+                //document.title=container.innerWidth();
+
+            }
+            setColumns();
+
+            var arrLeft=[];//每一列图片的left值
+            var arrTop=[];//每一列图片的top值
+
+            //循环每一列，计算出每一列的left值
+            for(var i=0;i<iColumns;i++){
+                arrTop.push(0);//刚开始的时候每个top=0
+                arrLeft.push(i*iActualWidth);
+                //return arrLeft;
+            }
+            console.log(arrLeft);
+
+            function getData() {
+                //获取数据
+                    loader.show();
+                    $.getJSON(url,"page="+iPage,function (data) {
+                        //console.log(data);data就是返回给我们的数据。可直接使用
+                        //循环获取到的数据，data是一个数组，每个数组又是一个对象。用each遍历数组
+                        $.each(data,function (index,obj) {
+                            var oImg=$("<img />");//创建img标签
+                            oImg.attr("src",obj.preview);//preview是对象里面的一个属性名。存储图片地址
+                            container.append(oImg);//将图片放到container里面
+
+                            var bili=iWidth/obj.width;//获取图片显示宽度和实际宽度的比例，然后用这个比例算出图片的显示高度，等比缩放图
+                            var iHeight=obj.height*bili;//计算出图片的显示高度
+                            //设置图片的显示宽高
+                            oImg.css({
+                                "width":iWidth,
+                                "height":iHeight
+                            });
+
+                            //图片怎么放？
+                            var minIndex=getMin();//获取top值最小的那个index
+                            oImg.css({"left":arrLeft[minIndex],"top":arrTop[minIndex]});//设置图片位置
+                            arrTop[minIndex]+=(iHeight+5);//累加top值.将图片的高加到top里面
+                            loader.hide();//加载图片成功以后，隐藏加载gif
+
+                        })
+                    });
+
+
+            }
+
+            //获取数组里面，top值最小的那个index
+            function getMin() {
+                var first=arrTop[0];//获取第一个top值
+                var _index=0;//初始化索引值
+
+                for(var i=1;i<arrTop.length;i++){
+                    if(first>arrTop[i]){
+                        first=arrTop[i];
+                        _index=i;//将top值小的那个i赋给index
+                    }
+                }
+                return _index;//返回index值，该index值对应top最小的那个
+            }
+
+            //什么时候加载新的一页？
+            $(window).on("scroll",function () {
+                var windowHeight=$(window).scrollTop()+$(window).innerHeight();//获取整个可视区高度
+                var iMini=getMin();//获取top值最小的index
+                if(arrTop[iMini]+container.offset().top<windowHeight){
+                    iPage++;//满足条件代表要加载新的一页，ipage加1
+                    getData();
+                }
+            })
+
+            getData();
+        })
+
+    </script>
+</head>
+<body>
+<div id="container">
+
+</div>
+<div id="loader">
+    <img src="images/loading7.gif" alt="">
+</div>
+</body>
+</html>
